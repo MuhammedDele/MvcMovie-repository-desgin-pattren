@@ -1,18 +1,20 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+//using Microsoft.EntityFrameworkCore;
+using MvcMovie.DAL;
 using MvcMovie.Data;
+using MvcMovie.Models;
 using MvcMovie.Models.ViewModels;
 
 namespace MvcMovie.Controllers
 {
 	public class MoviesController : Controller
 	{
-		private readonly MovieContext _context;
+		private IUnitOfWork _uow;
 
-		public MoviesController(MovieContext context)
+		public MoviesController(IUnitOfWork uow)
 		{
-			_context = context;
+			_uow = uow;
 		}
 
 		public IActionResult List(int ratingID = 0)
@@ -21,15 +23,15 @@ namespace MvcMovie.Controllers
 
 			if (ratingID != 0)
 			{
-				listMoviesVM.Movies = _context.Movies.Where(m => m.RatingID == ratingID).OrderBy(m => m.Title).ToList();
+				listMoviesVM.Movies = _uow.MovieRepository.GetAll().Where(m => m.RatingID == ratingID).OrderBy(m => m.Title).ToList();
 			}
 			else
 			{
-				listMoviesVM.Movies = _context.Movies.OrderBy(m => m.Title).ToList();
+				listMoviesVM.Movies = _uow.MovieRepository.GetAll().OrderBy(m => m.Title).ToList();
 			}
 
 			listMoviesVM.Ratings =
-				new SelectList(_context.Ratings.OrderBy(r => r.Name),
+				new SelectList(_uow.RatingRepository.GetAll().OrderBy(r => r.Name),
 								"RatingID", "Name");
 			listMoviesVM.ratingID = ratingID;
 
@@ -38,9 +40,9 @@ namespace MvcMovie.Controllers
 
 		public IActionResult Details(int id)
 		{
-			var movie = _context.Movies
-							.Include(m => m.Rating)
-							.SingleOrDefault(m => m.MovieID == id);
+			var movie = _uow.MovieRepository.Get(
+				filter: x => x.MovieID == id,
+				includes: x => x.Rating).FirstOrDefault();							
 
 			return View(movie);
 		}
@@ -49,7 +51,7 @@ namespace MvcMovie.Controllers
 		public IActionResult Create()
 		{
 			ViewData["Ratings"] =
-				new SelectList(_context.Ratings.OrderBy(r => r.Name),
+				new SelectList(_uow.RatingRepository.GetAll().OrderBy(r => r.Name),
 							   "RatingID",
 							   "Name");
 

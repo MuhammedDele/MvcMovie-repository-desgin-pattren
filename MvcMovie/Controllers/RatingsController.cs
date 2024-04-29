@@ -1,6 +1,8 @@
+using System.Data;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+//using Microsoft.EntityFrameworkCore;
+using MvcMovie.DAL;
 using MvcMovie.Data;
 using MvcMovie.Models;
 
@@ -8,17 +10,16 @@ namespace MvcMovie.Controllers
 {
     public class RatingsController : Controller
     {
-        private readonly MovieContext _context;
-
-        public RatingsController(MovieContext context)
+        private IUnitOfWork _uow;
+        public RatingsController(IUnitOfWork uow)
         {
-            _context = context;    
+            _uow = uow;
         }
 
         // GET: Ratings/List
         public IActionResult List()
         {
-            var ratings = _context.Ratings.OrderBy(r => r.Name);
+            var ratings = _uow.RatingRepository.GetAll().OrderBy(r => r.Name);
 
             return View(ratings.ToList());
         }
@@ -36,8 +37,8 @@ namespace MvcMovie.Controllers
         {
             if (ModelState.IsValid)
             {
-                _context.Add(rating);
-                _context.SaveChanges();
+                _uow.RatingRepository.Insert(rating);
+                _uow.Save();
                 return RedirectToAction("List");
             }
             return View(rating);
@@ -46,7 +47,8 @@ namespace MvcMovie.Controllers
         // GET: Ratings/Edit/5
         public IActionResult Edit(int id)
         {
-            var rating = _context.Ratings.SingleOrDefault(r => r.RatingID == id);
+            var rating = _uow.RatingRepository.GetByID(id);
+            _uow.RatingRepository.Update(rating);
 
             return View(rating);
         }
@@ -60,10 +62,10 @@ namespace MvcMovie.Controllers
             {
                 try
                 {
-                    _context.Update(rating);
-                    _context.SaveChanges();
+                    _uow.RatingRepository.Update(rating);
+                    _uow.Save();
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DataException)
                 {
                     throw;
                 }
@@ -75,9 +77,8 @@ namespace MvcMovie.Controllers
         // GET: Ratings/Delete/5
         public IActionResult Delete(int id)
         {
-            var rating = _context.Ratings.SingleOrDefault(r => r.RatingID == id);
-            _context.Ratings.Remove(rating!);
-            _context.SaveChanges();
+            _uow.RatingRepository.Delete(id);
+            _uow.Save();
             return RedirectToAction("List");
         }
 
